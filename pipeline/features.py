@@ -1,28 +1,31 @@
 import pandas as pd
 
 def failed_login_velocity(df):
-    """
-    Count the number of failed logins in the last 10 minutes for each user.
-    """
+
+    # Sort by time for rolling windows
     df = df.sort_values("timestamp")
 
-    # create an empty column
-    df["failed_login_10min"] = 0
+    # Only failed login rows
+    fails = df[df["event_type"] == "login_fail"].copy()
 
-    # Loop through failed login events only
-    for i, row in df.itterrows():
-        if row["event_type"] == "login_failed":
-            user = row["user_id"]
-            current_time = row["timestamp"]
+    # Group by user and apply rolling 10-minute window
+    fails["failed_login_10min"] = (
+        fails
+        .groupby("user_id")["timestamp"]
+        .rolling("10min")
+        .count()
+        .reset_index(level=0, drop=True)
+    )
 
-    # find all failed logins for the same user in last 10 minutes
-    mask = (
-        (df["user_id"] ==user) & 
-        (df["event_type"] =="login_failed") &
-        (df["timestamp"] >= current_time - pd.Timedelta(minutes=10)) &
-        (df["timestamp"] <= current_time)
-    )        
-    
-    df.at[i, "failed_login_10min"] = mask.sum()
+    # Merge back into main dataframe
+    df = df.merge(
+        fails[["failed_login_10min"]],
+        left_index=True,
+        right_index=True,
+        how="left"
+    )
+
+    # Fill non-fail rows with 0
+    df["failed_login_10min"] = df["failed_login_10min"].fillna(0)
 
     return df
