@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np
 
 def failed_login_velocity(df):
 
@@ -78,3 +79,34 @@ def amount_deviation(df):
     df = df.dropna(colums = ["user_avg_amount"])
     return df
 
+def distance_from_last_location():
+    df = df.sort_values("timestamp")
+
+    # Shift latitude/longitude to get previous coordinates per user
+    df["pre_lat"] = df.groupby("user_id")["lat"].shift(1)
+    df["pre_lon"] = df.groupby("user_id")["lon"].shift(1)
+
+    # Haversine formula (vectorized)
+    R = 6371 #km
+
+    lat1 = np.radians(df["pre_lat"])
+    lon1 = np.radians(df["pre_lon"])
+    lat2 = np.radians(df["lat"])
+    lon2 = np.radians(df["lon"])
+
+    dlat = lat2 - lat1
+    dlon = lon2 - lon1
+
+    a = (
+        np.sin(dlat/2)**2 +
+        np.cos(lat1) * np.cos(lat2) * np.sin(dlon/2)**2
+    )
+    df["dist_from_last_loc"] = 2 * R * np.arcsin(np.sqrt(a))
+
+    # First row of each user will be NaN → fill with 0
+    df["dist_from_last_loc"] = df["dist_from_last_loc"].fillna(0)
+    
+     # Drop temporary columns
+    df = df.drop(columns=["prev_lat", "prev_lon"])
+
+    return df
