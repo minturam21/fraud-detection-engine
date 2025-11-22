@@ -110,3 +110,65 @@ def distance_from_last_location():
     df = df.drop(columns=["prev_lat", "prev_lon"])
 
     return df
+
+def time_gaps(df):
+    """ Compute time gaps between important user actions using vectorized operations."""
+    df = df.sort_values("timestamp")
+
+    #prepare Column
+    df["time_since_last_login"] = 0
+    df["time_since_last_reset"] = 0
+    df["time_since_last_txn"] = 0
+
+    # last login
+    last_login_time = (
+        df[df["event_type"] == "login"]
+        .groupby("user_id")["timestamp"]
+        .shift(1)
+    )
+
+    df["last_login_time"] = last_login_time
+    df["time_since_last_login"] = (
+       (df["timestamp"] - df["last_login_time"])
+       .dt.total_seconds()
+       .fillna(0)
+    )
+
+    # last time password reset
+    last_time_reset = (
+        df[df["event_type"]=="reset_password"]
+        .groupby("user_id")["timestamp"]
+        .shift(1)
+    )
+
+    df["last_time_reset"] = last_time_reset
+    df["time_since_last_reset"] = (
+        (df["timestamp"] - df["last_time_reset"])
+        .dt.total_seconds()
+        .fillna(0)
+    )
+
+    # last transaction
+
+    last_tnx_time = (
+        [df["event_type"] =="transaction"]
+        .groupby("user_id")["timestamp"]
+        .shift(1)
+    )
+
+    df["last_txn_time"] = last_tnx_time
+    df["time_since_last_txn"] = (
+        (df["timestamp"] - df["last_txn_time"])
+        .dt.total_seconds()
+        .fillna(0)
+    )
+
+    # clean temporary column
+    df = df.drop(columns =[
+        "last_login_time",
+        "last_rest_time",
+        "last_txn_time"
+    ] )
+
+    return df
+
