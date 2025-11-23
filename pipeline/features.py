@@ -172,3 +172,123 @@ def time_gaps(df):
 
     return df
 
+def velocity_features(df):
+    # Compute multiple velocity features (login, txn, IP change, device change)
+
+    df = df.sort_values("timestamp")
+
+    # login Velocity
+    login_events = df[df["event_type"]=="login"].copy
+    login_events["login_velocity_10min"] = (
+        login_events
+        .groupby("user_id")["timestamp"]
+        .rolling("10min")
+        .count()
+        .reset_index(level = 0, drop = True)
+    )
+
+    # transaction velocity
+    txn_events = df[df["event_type"]=="transaction"].copy
+    txn_events["txn_velocity_10min"]= (
+        df.groupby("user_id")["timestamp"]
+        .rolling("10min")
+        .count()
+        .resert_index(level=0, drop=True)
+    )
+
+
+    # ip change velocity
+    df["prev_ip"] = df.groupby("user_id")["ips"].shift(1)
+    df["ip_change"] = (df["ip"] != df["prev_ip"]).astype(int)
+
+    df["ip_change_velocity_10min"] = (
+        df.groupby("user_id")
+        .rolling("10min", on = "timestamp")["ip_change"]
+        .sum()
+        .reset_index(level=0, drop = True)
+    )
+
+    # device change velocity
+    df["prev_device"] = df.groupby("user_id")["device_id"].shift(1)
+    df["device_change"] = (df["device_id"] != df["prev_device"]).astype(int)
+
+    df["device_change_velocity_10min"] = (
+        df.groupby("user_id")
+        .rolling("10min", on = "timestamp")["device_change"]
+        .sum()
+        .reset_index(level=0, drop=True)
+    )
+
+    # merge login velocity and transaction velocity back into df
+    df = df.merge(
+        login_events =[["login_velocity_10min"]],
+        left_index = True,
+        right_index = True,
+        how = "left"
+    ).merge(
+        txn_events = [["txn_velocity_10min"]],
+        left_index = True,
+        right_index = True,
+        how = "left"
+    )
+
+    # fill Nan with 0
+    df = df.fillna({
+        "login_velocity_10min" : 0,
+        "txn_velocity_10min" : 0,
+        "ip_change_velocity_10min": 0,
+        "device_change_velocity_10min" :0
+    })
+
+    # clean up temp columns
+    df = df.dropna(columns= ["prev_ip", "prev_device", "ip_change", "device_change"])
+
+    return df
+
+def first_time_receiver_flag(df):
+    """Flag if the payment receiver is new for this user.
+    Uses groupby + cumcount for fast, scalable computation."""
+
+    df = df.sort_values("timestamp")
+
+    txn_df = df[df["event_type"] == "transaction"].copy()
+
+    # First time a user send money to a receiver cumcount = 0
+    df["new_receiver"] = (
+        txn_df.groupby(["user_id", "receiver_id"]).cumcount() ==0
+    ).astype(int)
+
+    # merge back to new df
+    df = df.merge(
+        txn_df[["new_receiver"]],
+        right_index = True,
+        left_index = True,
+        how = "left"
+    )
+
+    # fill non-transaction event with 0
+    df["new_receiver"] = df["new_receiver"].fillna(0)
+
+    return df
+
+def assemble_features(df):
+
+    df = df.sort_values("timestamp")
+
+    # apply all features functions
+    df = failed_login_velocity(df)
+    df = new_device_flag(df)
+    df = new_ip_flag(df)
+    df = amount_deviation(df)
+    df = distance_from_last_location(df)
+    df = time_gaps(df)
+    df = velocity_features(df)
+    df = first_time_receiver_flag(df)
+
+    # clean up
+    df = df.reset_index(drop = True)
+
+    return df
+
+
+ 
