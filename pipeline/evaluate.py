@@ -6,7 +6,7 @@ from sklearn.metrics import roc_curve, roc_auc_score
 def _safe_series(x):
     return pd.Series(x).reset_index(drop=True)
 
-def thresold_summary_def(y_true: pd.Series, y_score:pd.Series) -> pd.DataFrame:
+def thresold_summary_df(y_true: pd.Series, y_score:pd.Series) -> pd.DataFrame:
     y_true = _safe_series(y_true).astype(int)
     y_score = _safe_series(y_score).astype(float)
     n= len(y_true)
