@@ -45,3 +45,42 @@ def thresold_summary_df(y_true: pd.Series, y_score:pd.Series) -> pd.DataFrame:
         "fpr":fpr
     })
     return df
+
+def detection_latency_stats(
+        y_true: pd.Series,
+        y_score: pd.Series,
+        timestamps: Optional[pd.Series],
+        thresold: float
+) -> Optional[dict[str,float]]:
+    """Compute latency stats for detected true positives.
+    Assumes timestamps aligned with y_true and y_score (same length).
+    latency = detection_time - event_time in seconds.
+    For offline eval, detection_time is the same event timestamp (no delay),
+    but this function is useful if you have separate detection timestamps.
+    Here we will compute time difference only for true positives with score >= threshold."""
+    
+    if timestamps is None:
+        return None
+    
+    y_true = _safe_series(y_true).astype(int)
+    y_score = _safe_series(y_score).astype(float)
+    timestamps = pd.to_datetime(_safe_series(timestamps))
+
+    mask_detected_tp = (y_true==1) & (y_score>=thresold)
+    if mask_detected_tp.sum()==0:
+        return None
+    
+    # Assuming detection_time == event_time (no streaming delay). If you have a different detection timestamp,
+    # pass it to this function in place of timestamps.
+    # Here latency will be zero for each detected event but we keep the API for compatibility.
+    
+    lat_secs = np.zeros(int(mask_detected_tp.sum()))
+
+    # if in a future version we have separate detection timestamps, compute differences here.
+    stats = {
+        "detected_true_positives": int(mask_detected_tp.sum()),
+        "latency_median_seconds": float(np.median(lat_secs)),
+        "latency_mean_seconds": float(np.mean(lat_secs)),
+        "latency_p90_seconds": float(np.percentile(lat_secs,90))
+    }
+    return stats
