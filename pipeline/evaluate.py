@@ -32,14 +32,18 @@ def threshold_summary_df(y_true, y_prob, thresholds):
     return pd.DataFrame(rows)
 
 def precision_at_k(y_true, y_prob, k):
+
     df = pd.DataFrame({"y": y_true, "p": y_prob})
     df = df.sort_values("p", ascending=False)
     topk = df.head(k)
+
     if len(topk) == 0:
         return 0.0
+    
     return float(topk["y"].sum() / len(topk))
 
 def recall_at_fixed_fpr(y_true, y_prob, target_fpr=0.01):
+    
     fpr, tpr, thresholds = roc_curve(y_true, y_prob)
 
     # find first index where fpr >= target_fpr
