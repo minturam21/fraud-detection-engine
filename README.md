@@ -1,16 +1,3 @@
-Perfect.
-Here is your **complete, professional, industry-grade `README.md`** written exactly the way ML engineers structure fraud detection projects in real fintech companies.
-
-This is **copy-paste ready** into your GitHub.
-
----
-
-# ⭐ **README.md (Final Professional Version)**
-
-*(Everything below is the full file — no explanation text, no extra words. Copy exactly.)*
-
----
-
 # 🛡️ **Fraud Risk Intelligence System**
 
 *A Production-Style Fraud Detection Pipeline with Rules + Machine Learning*
