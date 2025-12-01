@@ -79,6 +79,7 @@ def detection_latency_stats(df, prob_col="pred_prob", time_col="timestamp", labe
     # latency: detection_time - event_time (seconds)
     latencies = (detected[time_col] - fraud_df[time_col]).dt.total_seconds()
 
+
     # keep only positive latencies
     latencies = latencies[latencies >= 0]
     if latencies.empty:
