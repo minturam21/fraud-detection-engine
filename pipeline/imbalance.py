@@ -51,12 +51,12 @@ def oversampling_minority(X,y, random_state=42):
     
     majority_count = class_counts.max()
 
-    result_frame =[]
-    for cls, count in class_counts.items():
+    result_frames = []
+    for cls, count in class_counts.items():  
         cls_df = df[df["label"]==cls]
 
     # oversampling minority
-    if count < majority_count:
+    if count < majority_count:  
         cls_df_res = resample(
             cls_df,
             replace=True,
@@ -66,16 +66,16 @@ def oversampling_minority(X,y, random_state=42):
     else:
         cls_df_res=cls_df
 
-    result_frame.append(cls_df_res)
+    result_frames.append(cls_df_res)    
 
     df_resampled=(
-        pd.concat(result_frame, ignore_index=True)
+        pd.concat(result_frames, ignore_index=True)  
         .sample(frac=1, random_state=random_state)
         .reset_index(drop=True)
     )
 
-    y_res = df_resampled["lanel"].astype(int)
-    X_res = df_resampled.frop(columns=["label"])
+    y_res = df_resampled["label"].astype(int)    
+    X_res = df_resampled.drop(columns=["label"])  
 
     return X_res, y_res
 
