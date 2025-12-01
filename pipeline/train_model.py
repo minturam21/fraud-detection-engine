@@ -12,22 +12,23 @@ except Exception:
     LGB_AVAIABLE = False
 
 
-def build_model(model_type="lightbgm", class_weight =None):
+def build_model(model_type="lightgbm", class_weight=None):
     model_type = model_type.lower()
-    if model_type == "lightbgm" and LGB_AVAIABLE:
+    if model_type == "lightgbm" and LGB_AVAIABLE:
         # Convert class_weight dict- scale_pos_weight
-        scale_pos_weight=None
-        if class_weight is not None and 1 in class_weight:
-            scale_pos_weight = class_weight[1]/(class_weight[0] + 1e-6)
+        scale_pos_weight = None 
+        if class_weight is not None and 1 in class_weight and 0 in class_weight:
+            scale_pos_weight = class_weight[1] / (class_weight[0] + 1e-6)
     
-    return lgb.LGBMClassifier(
+        return lgb.LGBMClassifier(
         n_estimators=300,
         learning_rate=0.05,
         max_depth=-1,
         subsample=0.8,
         colsample_bytree=0.8,
         scale_pos_weight=scale_pos_weight
-    )
+        )
+    raise ValueError("LightGBM is not available or model_type is unsupported.")
 
 def train_model( df: pd.DataFrame, split_date: str, imbalance_method= "class_weight", model_type="lightgbm"):
 
@@ -52,7 +53,7 @@ def train_model( df: pd.DataFrame, split_date: str, imbalance_method= "class_wei
     else:
         test_probs = model.predict(X_test)
 
-    return model, test_probs, class_weight,(X_train, X_test, y_train, y_test)
+    return model, test_probs, class_weight, (X_train, X_test, y_train, y_test)
 
 
     
