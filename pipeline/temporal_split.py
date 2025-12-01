@@ -2,7 +2,7 @@ import pandas as pd
 
 def ensure_datetime(df, time_col="timstamp"):
 
-    df["time_col"] = pd.to_datetime(df[time_col], error = "coerce")
+    df[time_col] = pd.to_datetime(df[time_col], errors="coerce")
     return df
 
 def sort_by_time(df, time_col = "timestamp"):
@@ -16,22 +16,22 @@ def temporal_train_text_split(df, split_date, label_col = "label"):
     split_date = pd.to_datetime(split_date)
 
     # split
-    train_def = df[df["timestamp"]< split_date]
+    train_df = df[df["timestamp"] < split_date] 
     test_df = df[df["timestamp"]>= split_date]
 
     # check
-    if train_def.empty:
+    if train_df.empty:
         raise ValueError("trainin data set is empty")
     if test_df.empty:
         raise ValueError("test data set is empty")
-    if test_df[label_col].sum ==0:
+    if test_df[label_col].sum() ==0:
         print("Warning: No fraud cases in test set.")
 
     # Separate features and labels
-    X_train = train_def.drop(columns = [label_col])
-    y_train = train_def[label_col]
+    X_train = train_df.drop(columns = [label_col])
+    y_train = train_df[label_col]
 
-    X_test = test_df.drop(coumns=[label_col])
+    X_test = test_df.drop(columns=[label_col]) 
     y_test = test_df[label_col]
 
     return X_train, X_test, y_train, y_test
