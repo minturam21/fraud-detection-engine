@@ -39,7 +39,7 @@ def new_device_flag(df):
 
     # Identify first time a user uses a device
     df["new_device"] = (
-        df.groupby(["user_id", "device_id"]).cumcount ==0
+        df.groupby(["user_id", "device_id"]).cumcount() ==0
     ).astype(int)
 
     return df
@@ -76,10 +76,10 @@ def amount_deviation(df):
     df["amount_deviation"] = df["amount_deviation"].fillna(0)
 
     # Cleanup temporary column
-    df = df.dropna(colums = ["user_avg_amount"])
+    df = df.dropna(columns = ["user_avg_amount"])
     return df
 
-def distance_from_last_location():
+def distance_from_last_location(df):
     df = df.sort_values("timestamp")
 
     # Shift latitude/longitude to get previous coordinates per user
@@ -107,7 +107,7 @@ def distance_from_last_location():
     df["dist_from_last_loc"] = df["dist_from_last_loc"].fillna(0)
     
      # Drop temporary columns
-    df = df.drop(columns=["prev_lat", "prev_lon"])
+    df = df.drop(columns=["pre_lat", "pre_lon"])
 
     return df
 
@@ -149,9 +149,8 @@ def time_gaps(df):
     )
 
     # last transaction
-
     last_tnx_time = (
-        [df["event_type"] =="transaction"]
+        df[df["event_type"] == "transaction"]                     
         .groupby("user_id")["timestamp"]
         .shift(1)
     )
@@ -166,7 +165,7 @@ def time_gaps(df):
     # clean temporary column
     df = df.drop(columns =[
         "last_login_time",
-        "last_rest_time",
+        "last_time_reset",
         "last_txn_time"
     ] )
 
@@ -178,7 +177,7 @@ def velocity_features(df):
     df = df.sort_values("timestamp")
 
     # login Velocity
-    login_events = df[df["event_type"]=="login"].copy
+    login_events = df[df["event_type"]=="login"].copy()
     login_events["login_velocity_10min"] = (
         login_events
         .groupby("user_id")["timestamp"]
@@ -188,12 +187,13 @@ def velocity_features(df):
     )
 
     # transaction velocity
-    txn_events = df[df["event_type"]=="transaction"].copy
+    txn_events = df[df["event_type"]=="transaction"].copy()
     txn_events["txn_velocity_10min"]= (
-        df.groupby("user_id")["timestamp"]
+        txn_events
+        .groupby("user_id")["timestamp"]
         .rolling("10min")
         .count()
-        .resert_index(level=0, drop=True)
+        .reset_index(level=0, drop=True)
     )
 
 
@@ -221,12 +221,12 @@ def velocity_features(df):
 
     # merge login velocity and transaction velocity back into df
     df = df.merge(
-        login_events =[["login_velocity_10min"]],
+        login_events[["login_velocity_10min"]],
         left_index = True,
         right_index = True,
         how = "left"
     ).merge(
-        txn_events = [["txn_velocity_10min"]],
+        txn_events[["txn_velocity_10min"]],
         left_index = True,
         right_index = True,
         how = "left"
@@ -241,7 +241,7 @@ def velocity_features(df):
     })
 
     # clean up temp columns
-    df = df.dropna(columns= ["prev_ip", "prev_device", "ip_change", "device_change"])
+    df = df.drop(columns= ["prev_ip", "prev_device", "ip_change", "device_change"])
 
     return df
 
@@ -254,7 +254,9 @@ def first_time_receiver_flag(df):
     txn_df = df[df["event_type"] == "transaction"].copy()
 
     # First time a user send money to a receiver cumcount = 0
-    df["new_receiver"] = (
+    df["new_receiver"] = 0
+    
+    txn_df["new_receiver"]=(
         txn_df.groupby(["user_id", "receiver_id"]).cumcount() ==0
     ).astype(int)
 

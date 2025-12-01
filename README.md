@@ -1,16 +1,3 @@
-Perfect.
-Here is your **complete, professional, industry-grade `README.md`** written exactly the way ML engineers structure fraud detection projects in real fintech companies.
-
-This is **copy-paste ready** into your GitHub.
-
----
-
-# ⭐ **README.md (Final Professional Version)**
-
-*(Everything below is the full file — no explanation text, no extra words. Copy exactly.)*
-
----
-
 # 🛡️ **Fraud Risk Intelligence System**
 
 *A Production-Style Fraud Detection Pipeline with Rules + Machine Learning*
@@ -45,23 +32,42 @@ This project is fully modular, production-oriented, and suitable for real-time i
 
 ```mermaid
 flowchart TD
+    A["Raw Events
+    (login, reset, txn)"] --> B["Data Cleaning
+    - missing values
+    - invalid timestamps
+    - invalid amounts"]
 
-    A[Raw Events<br>(login, reset, txn)] --> B[Data Cleaning<br>- missing values<br>- invalid timestamps<br>- invalid amounts]
+    B --> C["Feature Engineering
+    - velocity
+    - amount deviation
+    - device/IP intelligence
+    - location jump"]
 
-    B --> C[Feature Engineering<br>- velocity<br>- amount deviation<br>- device/IP intelligence<br>- location jump]
+    C --> D["Rule Engine
+    - brute force login
+    - new device
+    - first-time receiver
+    - instant reset
+    Outputs: rule_score, rule_flags"]
 
-    C --> D[Rule Engine<br>- brute force login<br>- new device<br>- first-time receiver<br>- instant reset<br><b>Outputs:</b> rule_score & rule_flags]
+    C --> E["ML Fraud Model
+    RandomForest
+    Outputs: model_score"]
 
-    C --> E[ML Fraud Model<br>RandomForest<br><b>Outputs:</b> model_score]
-
-    D --> F[Score Combiner<br>final_score = α*model + (1-α)*rule]
+    D --> F["Score Combiner
+    final_score = α*model + (1-α)*rule"]
     E --> F
 
-    F --> G[Decision Engine<br>- thresholds.json<br>- ALLOW / OTP / BLOCK]
+    F --> G["Decision Engine
+    thresholds.json
+    ALLOW / OTP / BLOCK"]
 
-    G --> H[Logging & Monitoring<br>fraud_engine.log]
-
+    G --> H["Logging & Monitoring
+    fraud_engine.log"]
 ```
+
+
 
 ---
 
