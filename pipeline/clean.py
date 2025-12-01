@@ -1,7 +1,7 @@
 import pandas as pd
 
 def drop_missing_critical(df):
-    df = df.dropna(subset=["user_id", "timestamp", "event-type"])
+    df = df.dropna(subset=["user_id", "timestamp", "event_type"])
     return df
 
 def normalize_timestamps(df):
@@ -40,7 +40,7 @@ def fix_small_time_skew(df):
     mask = (df["timestamp"] < df["timestamp_shift"]) & \
            ((df["timestamp_shift"]-df["timestamp"]).dt.total_seconds()<120)
     df.loc[mask, "timestamp"] = df.loc[mask,"timestamp_shift"]
-    df = df.drop(colums = ["timestamp_shift"])
+    df = df.drop(columns = ["timestamp_shift"])
     return df
 
 def drop_impossible_sequences(df):
@@ -57,11 +57,11 @@ def drop_impossible_sequences(df):
     df["pre_timestamp"] = df["timestamp"].shift(1)
 
     mask_backward_jump = ((df["timestamp"])<(df["pre_timestamp"])) & \
-                         ((df["pre_timestamp"]-df["timestamp"]).dt.total_seconds()< 300)
+                         ((df["pre_timestamp"]-df["timestamp"]).dt.total_seconds()> 300)
     
     # drop such row
     df = df[~mask_backward_jump]
-    df = df.drop(colums = ["pre_timestamp"])
+    df = df.drop(columns = ["pre_timestamp"])
     return df
 
 
@@ -81,16 +81,15 @@ def validate_labels(df):
     If label timestamp is earlier, it's leakage or corrupted data.
     Such rows must be removed.
     """
-    # Only check rows with a fraud label timestamp present
+    if "fraud_label_timestamp" not in df.columns:
+        return df
+    if "transaction_timestamp" not in df.columns:
+        return df
+
     mask_label = df["fraud_label_timestamp"].notna()
-
-    # Valid rows: label_time > transaction_time
     mask_valid = df["fraud_label_timestamp"] > df["transaction_timestamp"]
-
-    # Keep rows where:
-    #  - no label (legit)
-    #  - OR label is valid
     df = df[~mask_label | mask_valid]
+
     return df
 
 def data_cleaned(df):
