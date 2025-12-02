@@ -14,19 +14,13 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-
-# ----------------------------------------------------------
 # Automatically pick a time-based split date
-# ----------------------------------------------------------
 def auto_split_date(df, time_col="timestamp"):
     ts = pd.to_datetime(df[time_col], errors="coerce").sort_values().reset_index(drop=True)
     cutoff = int(len(ts) * 0.8)   # 80% for training
     return ts.iloc[cutoff]
 
-
-# ----------------------------------------------------------
 # Main pipeline
-# ----------------------------------------------------------
 def main():
 
     # Load
