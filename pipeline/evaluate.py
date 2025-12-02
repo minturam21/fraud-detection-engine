@@ -87,7 +87,7 @@ def detection_latency_stats(df, prob_col="pred_prob", time_col="timestamp", labe
 
     return float(latencies.mean()), float(latencies.median())
 
-def evaluate_pro(y_true, y_prob, top_k=100, target_fpr=0.01):
+def evaluate_model(y_true, y_prob, top_k=100, target_fpr=0.01):
     y_true = np.array(y_true)
     y_prob = np.array(y_prob)
 
