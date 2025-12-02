@@ -381,7 +381,7 @@ Potential extensions include:
 ## 👤 **15. Author**
 
 Fraud Risk Intelligence System
-Built by **Mintu Ramchiary**
+Built by **@minturam21**
 For ML Engineer / Data Scientist roles.
 
 ---
