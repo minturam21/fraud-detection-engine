@@ -1,35 +1,89 @@
 import json
-import numpy as np
-import pandas as pd
 import joblib
+import logging
+import pandas as pd
+from pathlib import Path
 
-# loaders
+from pipeline.clean import data_cleaned
+from pipeline.features import assemble_features
+from pipeline.features import select_model_features
+from .rule_engine import decision_pipeline
+from scoring.decision_pipeline import decision_pipeline
 
-def load_model(model_path):
-    return joblib.load(model_path)
 
-def load_thresholds(threshold_path):
-    with open(threshold_path, "r") as f:
-        return json.laod(f)
-    
-# scoring logic
-def compute_model_score(model, row_df):
-    prob = model.predict_proba(row_df)[0][1]
-    return float[prob]
 
-def combine_scores(model_score, rule_score, alpha=0.7):
+# ---------------- Logger ----------------
+logger = logging.getLogger("scoring")
+handler = logging.StreamHandler()
+formatter = logging.Formatter("%(asctime)s | %(levelname)s | scoring | %(message)s")
+handler.setFormatter(formatter)
+logger.addHandler(handler)
+logger.setLevel(logging.INFO)
 
-    final_score = alpha * model_score + (1-alpha) * rule_score
-    return float(min(max(final_score,0.0), 1.0))
 
-def score_event(model, threshold, event_features_row, rule_score, rule_flags, alpha=0.7):
-    model_score = compute_model_score(model, event_features_row)
+# ---------------- Scoring Engine ----------------
+class ScoringEngine:
 
-    final_score = combine_scores(model_score, rule_score, alpha=alpha)
-    return {
-        "model_score": model_score,
-        "rule_score": rule_score,
-        "final_score": final_score,
-        "rule_flags": rule_flags,
-        "threshold": threshold
-    }
+    def __init__(self, model_path="data/models/model.pkl", threshold_path="data/models/thresholds.json"):
+        logger.info("Initializing scoring engine")
+
+        self.model = joblib.load(model_path)
+        logger.info(f"Loaded model: {model_path}")
+
+        if Path(threshold_path).exists():
+            with open(threshold_path, "r") as f:
+                self.threshold = json.load(f)
+            logger.info(f"Loaded thresholds: {threshold_path}")
+        else:
+            logger.warning("Threshold file missing, using default.")
+            self.threshold = {"low": 0.2, "medium": 0.5, "high": 0.8}
+
+        # IMPORTANT: read training feature names from model
+        self.train_features = self.model.feature_name_
+
+
+    def score(self, df: pd.DataFrame):
+        logger.info(f"Scoring {len(df)} rows...")
+
+        df_clean = data_cleaned(df)
+        df_features = assemble_features(df_clean)
+
+        # Extract model features only
+        df_model = select_model_features(df_features)
+
+        # ----------- FIX: force model feature alignment ----------
+        df_model = df_model.reindex(columns=self.train_features, fill_value=0)
+        # ----------------------------------------------------------
+
+        # Model prediction
+        model_score = self.model.predict_proba(df_model)[:, 1]
+
+        # Rule engine score (simple: sum of rule-trigger values if you add rule scoring later)
+        rule_score = 0.0
+        rule_flags = []
+
+        final_scores = model_score  # can later merge model+rule
+
+        results = []
+        for ms, rs, flags in zip(model_score, [rule_score]*len(df_model), [rule_flags]*len(df_model)):
+            decision = decision_pipeline(
+                final_score=ms,
+                model_score=ms,
+                rule_score=rs,
+                rule_flags=flags,
+                threshold=self.threshold
+            )
+            results.append(decision)
+
+        return results
+
+
+# ---------------- Run Standalone ----------------
+if __name__ == "__main__":
+    engine = ScoringEngine()
+
+    sample = pd.read_csv("data/synthetic/transactions.csv").tail(5)
+    results = engine.score(sample)
+
+    for r in results:
+        print(json.dumps(r, indent=4))
