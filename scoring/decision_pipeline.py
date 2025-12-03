@@ -106,7 +106,7 @@ def decision_pipeline(
     reasons: List[str] = []
     rule_flags = rule_flags or []
 
-    # 1) Forced flags always win first (BLOCK / OTP)
+    # Forced flags always win first (BLOCK / OTP)
     forced_action = apply_forced_flags(rule_flags, threshold, policy)
     if forced_action:
         reasons.append("forced_by_rule_flag")
@@ -127,7 +127,7 @@ def decision_pipeline(
         logger.debug("forced decision: %s", decision)
         return decision
 
-    # 2) Fallback to score-based policy
+    # Fallback to score-based policy
     action = decision_from_score(final_score, threshold, policy)
 
     if action == policy["action_labels"]["block"]:
