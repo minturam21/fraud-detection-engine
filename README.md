@@ -75,8 +75,8 @@ flowchart TD
 
 Since real financial fraud data is confidential and regulated, this project uses a **synthetic dataset** that simulates:
 
-* 10,000 events
-* 500 users
+* 61,043 events
+* 500–2000 users
 * realistic transaction patterns
 * login failures
 * device & IP changes
