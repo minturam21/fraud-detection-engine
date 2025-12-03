@@ -12,7 +12,7 @@ from scoring.decision_pipeline import decision_pipeline
 
 
 
-# ---------------- Logger ----------------
+# Logger 
 logger = logging.getLogger("scoring")
 handler = logging.StreamHandler()
 formatter = logging.Formatter("%(asctime)s | %(levelname)s | scoring | %(message)s")
@@ -21,7 +21,7 @@ logger.addHandler(handler)
 logger.setLevel(logging.INFO)
 
 
-# ---------------- Scoring Engine ----------------
+# Scoring Engine 
 class ScoringEngine:
 
     def __init__(self, model_path="data/models/model.pkl", threshold_path="data/models/thresholds.json"):
@@ -38,7 +38,7 @@ class ScoringEngine:
             logger.warning("Threshold file missing, using default.")
             self.threshold = {"low": 0.2, "medium": 0.5, "high": 0.8}
 
-        # IMPORTANT: read training feature names from model
+        # IMPORTANT - read training feature names from model
         self.train_features = self.model.feature_name_
 
 
@@ -51,9 +51,8 @@ class ScoringEngine:
         # Extract model features only
         df_model = select_model_features(df_features)
 
-        # ----------- FIX: force model feature alignment ----------
+        # FIX: force model feature alignment
         df_model = df_model.reindex(columns=self.train_features, fill_value=0)
-        # ----------------------------------------------------------
 
         # Model prediction
         model_score = self.model.predict_proba(df_model)[:, 1]
@@ -78,7 +77,7 @@ class ScoringEngine:
         return results
 
 
-# ---------------- Run Standalone ----------------
+# Run Standalone 
 if __name__ == "__main__":
     engine = ScoringEngine()
 
