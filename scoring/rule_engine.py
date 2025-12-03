@@ -1,84 +1,105 @@
-import numpy as np
-import pandas as pd
+import logging
+from typing import Dict, Any, List, Optional
 
-# rule definition
-def rule_failed_login_velocity(row):
-    if row.get("failed_login_10min",0)>=3:
-        return 0.25, "failed_login_velocity"
-    return 0.0, None
+logger = logging.getLogger("scoring.rule_engine")
 
-def rule_new_device(row):
-    if row.get("new_device_flag",0) ==1:
-        return 0.20, "new_device"
-    return 0.0, None
+# Flags that force immediate block
+FORCE_BLOCK = {"impossible_travel", "high_amount_deviation"}
 
-def rule_new_ip(row):
-    if row.get("new_ip_flag", 0)==1:
-        return 0.15, "new_ip"
-    return 0.0, None
+# Flags that force OTP
+FORCE_OTP = {"new_device", "first_time_receiver", "instant_password_reset"}
 
-def rule_amount_deviation(row):
-    if row.get("z_amount", 0)>=3:
-        return 0.30, "high_amount_deviation"
-    return 0.0, None
+DEFAULT_POLICY = {
+    "action_labels": {"allow": "ALLOW", "otp": "OTP", "block": "BLOCK"},
+    "tolerate_missing_threshold": False
+}
 
-def rule_first_time_receiver(row):
-    if row.get("first_time_receiver_flag", 0) ==1:
-        return 0.15, "first_time_receiver"
-    return 0.0, None
 
-def rule_transaction_velocity(row):
-    if row.get("txn_count_5min",0)>=5:
-        return 0.25, "high_txn_velocity"
-    return 0.0, None
+def validate_threshold(th: Dict[str, float]):
+    required = {"low", "medium", "high"}
+    if not required.issubset(th.keys()):
+        raise ValueError(f"Threshold keys missing: required {required}")
 
-def rule_time_between_login_and_reset(row):
-    if row.get("time_between_login_reset_sec", 999)<=10:
-        return 0.20, "instant_password_reset"
-    return 0.0, None
+    low, med, high = th["low"], th["medium"], th["high"]
+    if not (0 <= low <= med <= high <= 1):
+        raise ValueError("Invalid threshold ordering.")
 
-def rule_impossible_travel(row):
-    if row.get("distance_from_last_location_km", 0)>=500:
-        return 0.30, "impossible_travel"
-    return 0.0, None
 
-# main rule engine
-rule = [
-    rule_failed_login_velocity,
-    rule_new_device,
-    rule_new_device,
-    rule_amount_deviation,
-    rule_first_time_receiver,
-    rule_impossible_travel,
-    rule_first_time_receiver,
-    rule_time_between_login_and_reset,
-    rule_transaction_velocity
-]
+def decision_from_score(score: float, threshold: Dict[str, float], policy=DEFAULT_POLICY):
+    validate_threshold(threshold)
 
-def apply_rule(row):
-    total_score = 0.0
-    flags=[]
+    if score >= threshold["high"]:
+        return policy["action_labels"]["block"]
+    if score >= threshold["medium"]:
+        return policy["action_labels"]["otp"]
+    return policy["action_labels"]["allow"]
 
-    for rule_fn in rule:
-        score, flag = rule_fn(row)
-        total_score +=score
-        if flag:
-            flags.append(flag)
+
+def forced_decision(rule_flags: List[str], threshold, policy=DEFAULT_POLICY) -> Optional[str]:
+    flags = set(rule_flags)
+
+    if flags & FORCE_BLOCK:
+        return policy["action_labels"]["block"]
+
+    if flags & FORCE_OTP:
+        return policy["action_labels"]["otp"]
+
+    return None
+
+
+def decision_pipeline(
+    final_score: float,
+    model_score: float,
+    rule_score: float,
+    rule_flags: List[str],
+    threshold: Dict[str, float],
+    policy: Dict[str, Any] = DEFAULT_POLICY,
+    context: Optional[Dict[str, Any]] = None
+) -> Dict[str, Any]:
     
-    # 1.0 is max capacity 
-    total_score = min(total_score,1.0)
-    return total_score, flags
+    if context is None:
+        context = {}
 
-def run_rule_engine(df):
-    df = df.copy()
-    rule_score =[]
-    rule_flags = []
+    if not policy.get("tolerate_missing_threshold", False):
+        validate_threshold(threshold)
 
-    for _, row in df.itterrow():
-        score, flags = apply_rule(row)
-        rule_score.append(score)
-        rule_flags.append(flags)
+    reasons = []
 
-        df["rule_score"] = rule_score
-        df["rule_flags"] = rule_flags
-        return df
+    forced = forced_decision(rule_flags, threshold, policy)
+    if forced:
+        reasons.append("forced_flag_trigger")
+        for flag in rule_flags:
+            reasons.append(f"flag:{flag}")
+        return {
+            "action": forced,
+            "final_score": final_score,
+            "model_score": model_score,
+            "rule_score": rule_score,
+            "rule_flags": rule_flags,
+            "threshold": threshold,
+            "reasons": reasons,
+            "context": context,
+        }
+
+    action = decision_from_score(final_score, threshold, policy)
+
+    if action == "BLOCK":
+        reasons.append("high_score_block")
+    elif action == "OTP":
+        reasons.append("medium_score_otp")
+    else:
+        reasons.append("allowed_score_low")
+
+    for flag in rule_flags:
+        reasons.append(f"flag:{flag}")
+
+    return {
+        "action": action,
+        "final_score": final_score,
+        "model_score": model_score,
+        "rule_score": rule_score,
+        "rule_flags": rule_flags,
+        "threshold": threshold,
+        "reasons": reasons,
+        "context": context,
+    }
