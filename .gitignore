@@ -1,1 +1,7 @@
+__pycache__/
+*.pyc
+desktop.ini
+.env
+*.log
+.ipynb_checkpoints/
 
