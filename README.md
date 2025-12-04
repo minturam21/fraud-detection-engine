@@ -1,6 +1,7 @@
+
 # 🛡️ **Fraud Risk Intelligence System**
 
-*A Production-Style Fraud Detection Pipeline with Rules + Machine Learning*
+*A Production-Style Fraud Detection Pipeline with Rules + Machine Learning + Real-Time API*
 
 ---
 
@@ -17,18 +18,22 @@ It combines:
 * **Temporal validation**
 * **Synthetic dataset generation**
 * **Logging & monitoring components**
+* **FastAPI real-time scoring service** 
+* **Model loader + inference pipeline** 
 
-The system ingests raw user activity events (logins, password resets, transactions), converts them into behavioral features, and produces a final decision:
+The system ingests raw activity events (logins, password resets, transactions) or direct model features and produces a final decision:
 
 ```
 ALLOW / OTP_CHALLENGE / BLOCK
 ```
 
-This project is fully modular, production-oriented, and suitable for real-time integration.
+This project is fully modular, production-oriented, and suitable for both offline ML workflows and real-time fraud scoring.
 
 ---
 
 ## 🏗️ **2. System Architecture**
+
+### **Offline Fraud Pipeline Architecture**
 
 ```mermaid
 flowchart TD
@@ -67,7 +72,22 @@ flowchart TD
     fraud_engine.log"]
 ```
 
+---
 
+### 🌐 **Real-Time Fraud Scoring Architecture (FastAPI Layer)**
+
+In addition to the offline pipeline, the project includes a **live scoring API** that uses the same decision engine.
+
+```mermaid
+flowchart TD
+    A[Client Request (JSON)] --> B[Pydantic Validation]
+    B --> C[Feature Preprocessing]
+    C --> D[ML Model Scoring (model.joblib)]
+    C --> E[Rule Engine Evaluation]
+    D --> F[Decision Pipeline]
+    E --> F
+    F --> G[Final Response (ALLOW / OTP / BLOCK)]
+```
 
 ---
 
@@ -100,19 +120,19 @@ data/synthetic/transactions.csv
 
 ## ⚙️ **4. End-to-End Pipeline**
 
-The training pipeline runs in the following sequence:
+The offline training pipeline consists of:
 
-1. **Load synthetic raw data**
-2. **Clean invalid rows (missing values, impossible sequences)**
-3. **Feature engineering (behavior + velocity features)**
-4. **Temporal train/test split** (prevents leakage)
-5. **Handle class imbalance** (fraud is rare)
-6. **Train ML model** (Random Forest)
-7. **Evaluate with professional metrics**
-8. **Generate thresholds**
-9. **Save model + metadata**
+1. Load synthetic raw data
+2. Clean invalid rows
+3. Feature engineering
+4. Temporal train/test split
+5. Imbalance handling
+6. Train ML model (Random Forest)
+7. Evaluate with metrics
+8. Generate thresholds
+9. Save model + metadata
 
-Pipeline script:
+Run with:
 
 ```
 python pipeline/run_training_pipeline.py
@@ -126,25 +146,25 @@ Behavioral and statistical features include:
 
 ### **Login & Device Features**
 
-* `failed_login_10min`
-* `new_device_flag`
-* `new_ip_flag`
+* failed_login_10min
+* new_device_flag
+* new_ip_flag
 
 ### **Transaction Features**
 
-* `z_amount` (deviation from user’s typical amounts)
-* `tx_count_5min`
-* `first_time_receiver_flag`
+* z_amount
+* tx_count_5min
+* first_time_receiver_flag
 
 ### **Location Features**
 
-* `distance_from_last_location_km`
+* distance_from_last_location_km
 
 ### **Security Features**
 
-* `time_between_login_reset_sec`
+* time_between_login_reset_sec
 
-These features replicate signals used in real fraud surveillance systems.
+These replicate signals used by real fraud-surveillance systems.
 
 ---
 
@@ -159,75 +179,84 @@ rule_flags (list of triggered rules)
 
 Rules include:
 
-* Too many failed logins (brute-force takeover)
-* New device used by user
-* First-time money receiver
-* Instant password reset after login
+* Too many failed logins
+* New device used
+* First-time receiver
+* Instant password reset
 * High-risk location jump
 * Unusual transaction amount
 
-File:
+**Offline rule engine file:**
 
 ```
 scoring/rule_engine.py
+```
+
+**Real-time rule engine file:**
+
+```
+utils/rules.py
 ```
 
 ---
 
 ## 🤖 **7. Machine Learning Model**
 
-A **RandomForestClassifier** is trained using:
+A RandomForest classifier is used for offline training.
 
-* temporal split
-* balanced fraud data
-* engineered behavioral features
-
-Evaluation metrics:
-
-* **AUC**
-* **Recall @ 1% False Positive Rate**
-* **Precision @ K**
-* **Fraud Capture Rate**
-* **Detection Latency**
-
-Evaluation script:
+Real-time scoring uses a simplified model saved at:
 
 ```
-pipeline/evaluate.py
+models/model.joblib
 ```
+
+Loaded via:
+
+```
+utils/model_loader.py
+```
+
+Evaluation includes:
+
+* AUC
+* Recall @ low FPR
+* Precision@K
+* Fraud capture rate
+* Detection latency
 
 ---
 
 ## 📊 **8. Threshold Logic**
 
-Final decisions are made using `thresholds.json`:
+Thresholds:
 
 ```
-{
-  "low": 0.30,
-  "medium": 0.55,
-  "high": 0.80
-}
+low = 0.30
+medium = 0.55
+high = 0.80
 ```
 
-Logic:
+Decision mapping:
 
 * `score >= high` → **BLOCK**
 * `score >= medium` → **OTP Challenge**
 * `score < medium` → **ALLOW**
 
+Forced rule flags override thresholds.
+
 ---
 
 ## 🧮 **9. Decision Pipeline**
 
-This component merges:
+The decision engine merges:
 
-* rule engine
 * ML model score
-* weighted score combiner
-* threshold logic
+* Rule score
+* Rule flags
+* Thresholds
+* Forced rule overrides
 
-Returns a structured response:
+Returns:
 
 ```
 {
@@ -238,25 +267,31 @@ Returns a structured response:
 }
 ```
 
-File:
+Offline decision pipeline:
 
 ```
 scoring/decision_pipeline.py
+```
+
+Real-time decision pipeline:
+
+```
+pipeline/decision_pipeline.py
 ```
 
 ---
 
 ## 📈 **10. Monitoring & Logging**
 
-A production-style logger tracks:
+Tracks:
 
-* rule triggers
-* model scores
-* final decisions
-* training events
-* errors
+* Rule triggers
+* Model outputs
+* Threshold decisions
+* Errors
+* Training events
 
-Logs saved in:
+Log output stored in:
 
 ```
 logs/fraud_engine.log
@@ -266,27 +301,24 @@ logs/fraud_engine.log
 
 ## 📉 **11. Visual Results**
 
-Generated using:
+Generated via:
 
 ```
 python pipeline/make_plots.py
 ```
 
-Visuals stored in:
+Stored in:
 
 ```
 data/plots/
 ```
 
-### Included Plots
+Includes:
 
-* Rolling Fraud Rate Over Time
-* Transaction Amount Distribution
-* Fraud vs Legit Amount Comparison
-* Device Usage Patterns
-* Failed Login Velocity Distribution
-
-These plots are included in the README or uploaded to GitHub for stakeholders.
+* Fraud Rate Over Time
+* Transaction Distribution
+* Device Patterns
+* Login Velocity
 
 ---
 
@@ -298,19 +330,25 @@ These plots are included in the README or uploaded to GitHub for stakeholders.
 pip install -r requirements.txt
 ```
 
-### **Generate Synthetic Data**
+---
+
+### **Generate Synthetic Dataset**
 
 ```
 python data/synthetic/generate_synthetic_data.py
 ```
 
-### **Run Training Pipeline**
+---
+
+### **Train Offline Pipeline**
 
 ```
 python pipeline/run_training_pipeline.py
 ```
 
-### **Run Full System Test**
+---
+
+### **Run Full Offline System Test**
 
 ```
 python tests/run_full_system_test.py
@@ -318,21 +356,38 @@ python tests/run_full_system_test.py
 
 ---
 
-## 📁 **13. Project Structure**
+### 🌐 **Run Real-Time API Service (FastAPI)**
 
 ```
-├── data
-│   ├── synthetic
-│   │   ├── transactions.csv
-│   │   └── generate_synthetic_data.py
-│   ├── models
-│   │   ├── model.pkl
-│   │   ├── thresholds.json
-│   │   └── metadata.json
-│   └── plots
-│       ├── amount_distribution.png
-│       ├── fraud_rate_over_time.png
-│       └── ...
+python -m uvicorn api.main:app --reload
+```
+
+Open Swagger UI:
+
+```
+http://127.0.0.1:8000/docs
+```
+
+Example request:
+
+```
+POST /api/v1/predict
+{
+  "features": [0.9, 0.9, 0.9]
+}
+```
+
+---
+
+## 📁 **13. Project Structure**
+
+```md
+├── api
+│   ├── main.py
+│   ├── routers/
+│   │   └── predict.py
+│   └── schemas/
+│       └── predict.py
 │
 ├── pipeline
 │   ├── clean.py
@@ -342,21 +397,35 @@ python tests/run_full_system_test.py
 │   ├── train_model.py
 │   ├── evaluate.py
 │   ├── make_plots.py
-│   └── run_training_pipeline.py
-│
-├── scoring
-│   ├── rule_engine.py
-│   ├── score.py
+│   ├── run_training_pipeline.py
+│   ├── model_pipeline.py
 │   └── decision_pipeline.py
 │
 ├── utils
 │   ├── loader.py
 │   ├── validators.py
-│   └── logger.py
+│   ├── logger.py
+│   ├── model_loader.py
+│   ├── preprocess.py
+│   ├── postprocess.py
+│   └── rules.py
 │
-├── tests
+├── models/
+│   └── model.joblib
+│
+├── data/
+│   ├── synthetic/
+│   │   ├── transactions.csv
+│   │   └── generate_synthetic_data.py
+│   └── plots/
+│       ├── amount_distribution.png
+│       ├── fraud_rate_over_time.png
+│       └── ...
+│
+├── tests/
 │   └── run_full_system_test.py
 │
+├── generate_model.py
 ├── requirements.txt
 └── README.md
 ```
@@ -365,16 +434,15 @@ python tests/run_full_system_test.py
 
 ## 🚀 **14. Future Improvements**
 
-Potential extensions include:
-
-* FastAPI real-time scoring service
-* Device fingerprint intelligence
-* Advanced geolocation model
-* Gradient Boosting ML models (XGBoost/LightGBM)
+* Advanced rule engine
+* Device fingerprinting
+* Geolocation intelligence
+* Gradient boosting models (XGBoost/LightGBM)
 * Adaptive thresholds
 * Fraud drift detection
-* SHAP explainability reports
-* Model retraining scheduler
+* SHAP interpretability
+* Kafka or streaming pipeline
+* CI/CD + Docker
 
 ---
 
@@ -383,5 +451,3 @@ Potential extensions include:
 Fraud Risk Intelligence System
 Built by **@minturam21**
 For ML Engineer / Data Scientist roles.
-
----
