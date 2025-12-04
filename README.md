@@ -80,13 +80,14 @@ In addition to the offline pipeline, the project includes a **live scoring API**
 
 ```mermaid
 flowchart TD
-    A[Client Request (JSON)] --> B[Pydantic Validation]
+    A[Client Request] --> B[Pydantic Validation]
     B --> C[Feature Preprocessing]
-    C --> D[ML Model Scoring (model.joblib)]
+    C --> D[ML Model Scoring]
     C --> E[Rule Engine Evaluation]
     D --> F[Decision Pipeline]
     E --> F
-    F --> G[Final Response (ALLOW / OTP / BLOCK)]
+    F --> G[Final Decision: ALLOW / OTP / BLOCK]
+
 ```
 
 ---
