@@ -86,7 +86,8 @@ flowchart TD
     C --> E[Rule Engine Evaluation]
     D --> F[Decision Pipeline]
     E --> F
-    F --> G[Final Decision\n(ALLOW / OTP / BLOCK)]
+    F --> G[Final Decision: ALLOW / OTP / BLOCK]
+
 ```
 
 ---
