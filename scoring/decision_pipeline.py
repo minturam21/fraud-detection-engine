@@ -153,3 +153,29 @@ def decision_pipeline(
 
     logger.debug("decision made: %s", decision)
     return decision
+
+class DecisionPipeline:
+    """
+    Wrapper class used by API to compute final decision
+    from model_score, rule_score, flags, and thresholds.
+    """
+
+    def __init__(self, threshold: Dict[str, float]):
+        self.threshold = threshold
+
+    def run(
+        self,
+        final_score: float,
+        model_score: float,
+        rule_score: float,
+        rule_flags: Optional[List[str]] = None,
+        extra_context: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        return decision_pipeline(
+            final_score=final_score,
+            model_score=model_score,
+            rule_score=rule_score,
+            rule_flags=rule_flags,
+            threshold=self.threshold,
+            extra_context=extra_context,
+        )
