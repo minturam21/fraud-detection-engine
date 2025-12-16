@@ -1,4 +1,4 @@
-# api/routers/predict.py
+
 from fastapi import APIRouter, HTTPException
 from api.schemas.predict import PredictionRequest, PredictionResponse
 from pipeline.model_pipeline import ModelPipeline
