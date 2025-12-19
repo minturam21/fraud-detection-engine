@@ -4,7 +4,7 @@ from typing import List, Optional
 
 class PredictionRequest(BaseModel):
     """
-    Adjust 'features' to match your real input.
+    Adjust 'features' to match real input.
     For now it's a simple feature vector.
     """
     features: List[float] = Field(
