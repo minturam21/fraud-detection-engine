@@ -1,4 +1,3 @@
-
 from fastapi import APIRouter, HTTPException
 from api.schemas.predict import PredictionRequest, PredictionResponse
 from pipeline.model_pipeline import ModelPipeline
@@ -52,7 +51,7 @@ def predict(request: PredictionRequest):
         #  Rule score + flags
         rule_score, rule_flags = compute_rule_score_and_flags(model_score)
 
-        #  Combine into final_score (your business formula)
+        #  Combine into final_score 
         final_score = (model_score + rule_score) / 2.0
 
         # Run decision pipeline
